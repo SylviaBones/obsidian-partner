@@ -1,0 +1,9 @@
+{
+  "id": "obsidian-partner",
+  "name": "Obsidian Partner",
+  "version": "0.0.1",
+  "minAppVersion": "0.15.0",
+  "description": "A modular runtime system for Obsidian creative-based workflows",
+  "author": "Sylvia Bones",
+  "main": "main.js"
+}

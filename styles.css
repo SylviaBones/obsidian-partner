@@ -1,0 +1,85 @@
+/* General Styles */
+.partner-tab-bar {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+}
+.partner-tab-bar button.active {
+  border-bottom: 2px solid var(--interactive-accent);
+}
+
+
+/* Call Manager Plugin */
+.call-manager-container {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 8px;
+    margin: 10px;
+}
+
+.call-manager-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 6px 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.call-manager-row:last-child {
+	border-bottom: none;
+}
+
+.call-manager-description {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.call-manager-info {
+	display: flex;
+	flex-direction: column;
+}
+
+.call-manager-controls button {
+	margin-left: 6px;
+}
+
+
+
+
+/* Crystal Ball Plugin*/
+.crystal-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+}
+
+.crystal-orb.icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    box-shadow: 0 0 15px #a855f7;
+    transition: box-shadow 0.1s linear, transform 0.1s linear;
+    cursor: pointer;
+}
+
+.crystal-output {
+    min-height: 24px;
+    text-align: center;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+.crystal-orb.charging {
+    animation: pulseOrb 1s infinite alternate;
+}
+
+@keyframes pulseOrb {
+    0% { transform: scale(1.05); box-shadow: 0 0 20px #c084fc; }
+    50% { transform: scale(1.08); box-shadow: 0 0 35px #e0aaff; }
+    100% { transform: scale(1.05); box-shadow: 0 0 25px #c084fc; }
+}
+
+

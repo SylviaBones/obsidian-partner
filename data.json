@@ -1,0 +1,29 @@
+{
+  "snippetFolder": "y. Reference/partner_snippets",
+  "calls": [
+    {
+      "id": "ptrbvz4qp",
+      "label": "pm-modal",
+      "type": "btn",
+      "source": "pm-modal",
+      "enabled": true,
+      "description": "Opens up Project Manager Task modal"
+    },
+    {
+      "id": "ptr29hqhx",
+      "label": "head-list",
+      "type": "vw",
+      "source": "head-list 1",
+      "enabled": true,
+      "description": "Populates a list of information with multiple headers"
+    },
+    {
+      "id": "ptr9y2pg2",
+      "label": "test",
+      "type": "btn",
+      "source": "test",
+      "enabled": true,
+      "description": "testing testing"
+    }
+  ]
+}

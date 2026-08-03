@@ -1,0 +1,66 @@
+// views.ts
+/*
+export async function executeView(snippet, ctx) {
+  const fn = await resolveView(snippet.source);
+
+  if (!fn) {
+    return `Unknown view: ${snippet.source}`;
+  }
+
+  const data = await fn(snippet, ctx);
+
+  return wrapView(snippet, data);
+}
+
+async function resolveView(source: string) {
+  try {
+    // kebab-case maps directly to filename
+    const module = await import(`./modules/views/${source}.ts`);
+
+    // expect default export OR named export
+    return module.default || module[source];
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+
+function renderByVariant(source, data, ctx) {
+  switch (source) {
+    case "headlist":
+      return data
+        .map(h => `${"#".repeat(h.level)} ${h.text}`)
+        .join("\n");
+
+    case "list-log":
+      return data
+        .map(item => `- ${item}`)
+        .join("\n");
+
+    case "waypoint":
+      return data
+        .map(w => `→ [[${w.target}]]`)
+        .join("\n");
+
+    default:
+      return JSON.stringify(data, null, 2);
+  }
+}
+
+
+function wrapView(snippet, content) {
+  const classes = [
+    "call-view",
+    `vw-${snippet.source}`,
+    snippet.id
+  ].join(" ");
+
+  return `
+<div class="${classes}">
+${content}
+</div>
+  `;
+}
+
+*/
