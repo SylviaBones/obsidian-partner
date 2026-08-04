@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS, PartnerSettings } from "./settings/settings";
 import { CallEngine } from "./callEngine"
 import { CallRegistry } from "./modules/calls/callRegistry";
 import { registerCommands } from "./modules/commands";
+import { getProjectData } from "./modules/calls/getProjectData";
 
 // Main plugin class
 
@@ -14,6 +15,7 @@ export default class ObsidianPartner extends Plugin {
   settings!: PartnerSettings;
   callEngine!: CallEngine;
   callRegistry!: CallRegistry;
+  api!: any;
 
   core = new CorePlugin();
 
@@ -26,6 +28,15 @@ export default class ObsidianPartner extends Plugin {
     );
     registerCommands(this);
 
+    this.api = {getProjectData: () => getProjectData(this.app)};
+    this.addCommand({
+            id: "get-project-data",
+            name: "Get Project Data",
+            callback: async () => {
+                const data = await getProjectData(this.app);
+                console.log(data);
+            }
+    });
     this.callRegistry = new CallRegistry();
     this.callRegistry.load(this.settings.calls as any)
 

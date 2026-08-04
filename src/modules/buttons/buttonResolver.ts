@@ -1,7 +1,7 @@
 //buttonResolver.ts
 import { CallRegistry } from "../calls/callRegistry";
 import { SnippetManager } from "../../core/managers/SnippetManager";
-import { App } from "obsidian";
+import { App, Editor, EditorPosition } from "obsidian";
 
 declare const require: any;
 
@@ -34,6 +34,8 @@ export class ButtonResolver {
         TFile,
       },
 
+      editor: this.app.workspace.activeEditor?.editor,
+
       utils: {
         // future helpers
       },
@@ -42,14 +44,18 @@ export class ButtonResolver {
         // shared runtime state later
       },
 
-      note: {
+      note:
         file,
         frontmatter,
-      }
+
+      from: undefined as EditorPosition | undefined,
+      to: undefined as EditorPosition | undefined,
+
     };
   }
 
-  resolve(type: string, label: string): HTMLElement | null {
+  resolve(type: string, label: string, extraContext: any = {}): HTMLElement | null {
+    console.log("[Resolver] Resolving call:", type, label);
     const call = 
       this.callRegistry.get(
         `partner-${type}-${label}`
@@ -63,11 +69,12 @@ export class ButtonResolver {
       return null;
     }
     if (!call.enabled) return null
-    return this.runSnippet(call)
+    return this.runSnippet(call, extraContext)
   }
   
-  private runSnippet(call: any): HTMLElement | null {
+  private runSnippet(call: any, extraContext: any = {}): HTMLElement | null {
     try {
+      console.log("Available snippets:", this.snippetManager.getAllKeys());
       const fn = this.snippetManager.get(call.source);
 
       console.log("Running snippet:", call.source);
@@ -76,10 +83,16 @@ export class ButtonResolver {
         console.warn("[Resolver] Missing snippet:", call.source);
         return null;
       }
-      const action = fn({
+      const editor = this.app.workspace.activeEditor?.editor;
+      const context = {
         ...this.buildContext(),
+        ...extraContext,
+        editor,
+        from: editor?.offsetToPos(extraContext.from),
+        to: editor?.offsetToPos(extraContext.to),
         call
-      });
+      };
+      const action = fn(context);
 
 
       console.log("[Resolver] Action returned:", action);
@@ -96,7 +109,7 @@ export class ButtonResolver {
       });
 
       // Build button; centralized UI
-      return this.buildButton(call, action);
+      return this.buildButton(call, action, context);
 
     } catch (err) {
       console.error("Snippet execution failed:", call.label, err);
@@ -105,7 +118,7 @@ export class ButtonResolver {
 
   }
 
-  private buildButton(call: any, action: any): HTMLElement {
+  private buildButton(call: any, action: any, context: any): HTMLElement {
     const button = document.createElement("button");
 
     // label fallback logic
@@ -116,7 +129,7 @@ export class ButtonResolver {
 
     // click handler
     if (action.onClick) {
-      button.onclick = action.onClick;
+      button.onclick = () => { action.onClick(context); };
     }
 
     // optional extras (future-proofing)

@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => ObsidianPartner
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/core/EventBus.ts
 var EventBus = class {
@@ -229,7 +229,11 @@ function createButtonPlugin(resolver) {
             const [full, type, label] = match;
             const start = from + match.index;
             const end = start + full.length;
-            const buttonEl = resolver.resolve(type, label);
+            const editor = view;
+            const buttonEl = resolver.resolve(type, label, {
+              from: start,
+              to: end
+            });
             if (!buttonEl)
               continue;
             const deco = import_view.Decoration.replace({
@@ -352,8 +356,8 @@ var ButtonResolver = class {
   }
   //helpers
   buildContext() {
-    var _a;
-    const { Notice: Notice3, Modal: Modal2, TFile: TFile3 } = require("obsidian");
+    var _a, _b;
+    const { Notice: Notice3, Modal: Modal2, TFile: TFile4 } = require("obsidian");
     const file = this.app.workspace.getActiveFile();
     let frontmatter = {};
     if (file) {
@@ -366,21 +370,23 @@ var ButtonResolver = class {
       obsidian: {
         Notice: Notice3,
         Modal: Modal2,
-        TFile: TFile3
+        TFile: TFile4
       },
+      editor: (_b = this.app.workspace.activeEditor) == null ? void 0 : _b.editor,
       utils: {
         // future helpers
       },
       state: {
         // shared runtime state later
       },
-      note: {
-        file,
-        frontmatter
-      }
+      note: file,
+      frontmatter,
+      from: void 0,
+      to: void 0
     };
   }
-  resolve(type, label) {
+  resolve(type, label, extraContext = {}) {
+    console.log("[Resolver] Resolving call:", type, label);
     const call = this.callRegistry.get(
       `partner-${type}-${label}`
     );
@@ -393,20 +399,28 @@ var ButtonResolver = class {
     }
     if (!call.enabled)
       return null;
-    return this.runSnippet(call);
+    return this.runSnippet(call, extraContext);
   }
-  runSnippet(call) {
+  runSnippet(call, extraContext = {}) {
+    var _a;
     try {
+      console.log("Available snippets:", this.snippetManager.getAllKeys());
       const fn = this.snippetManager.get(call.source);
       console.log("Running snippet:", call.source);
       if (!fn) {
         console.warn("[Resolver] Missing snippet:", call.source);
         return null;
       }
-      const action = fn({
+      const editor = (_a = this.app.workspace.activeEditor) == null ? void 0 : _a.editor;
+      const context = {
         ...this.buildContext(),
+        ...extraContext,
+        editor,
+        from: editor == null ? void 0 : editor.offsetToPos(extraContext.from),
+        to: editor == null ? void 0 : editor.offsetToPos(extraContext.to),
         call
-      });
+      };
+      const action = fn(context);
       console.log("[Resolver] Action returned:", action);
       if (!action) {
         console.warn("[Resolver] No action returned:", call.source);
@@ -417,18 +431,20 @@ var ButtonResolver = class {
         type: typeof fn,
         fn
       });
-      return this.buildButton(call, action);
+      return this.buildButton(call, action, context);
     } catch (err) {
       console.error("Snippet execution failed:", call.label, err);
       return null;
     }
   }
-  buildButton(call, action) {
+  buildButton(call, action, context) {
     var _a, _b;
     const button = document.createElement("button");
     button.textContent = (_b = (_a = action.label) != null ? _a : call.label) != null ? _b : call.source;
     if (action.onClick) {
-      button.onclick = action.onClick;
+      button.onclick = () => {
+        action.onClick(context);
+      };
     }
     if (action.className) {
       button.className = action.className;
@@ -981,8 +997,77 @@ var CallEngine = class {
   }
 };
 
+// src/modules/calls/getProjectData.ts
+var import_obsidian9 = require("obsidian");
+
+// src/modules/calls/projectPickerModal.ts
+var import_obsidian8 = require("obsidian");
+var ProjectPickerModal = class extends import_obsidian8.FuzzySuggestModal {
+  constructor(app, projects, onSelect) {
+    super(app);
+    this.projects = projects;
+    this.onSelect = onSelect;
+  }
+  getItems() {
+    return this.projects;
+  }
+  getItemText(item) {
+    return item;
+  }
+  onChooseItem(item) {
+    this.onSelect(item);
+  }
+};
+
+// src/modules/calls/getProjectData.ts
+function getProjectData(app) {
+  return new Promise((resolve) => {
+    var _a, _b;
+    const pm = (_a = app == null ? void 0 : app.plugins) == null ? void 0 : _a.plugins["project-manager"];
+    const cache = (_b = pm == null ? void 0 : pm.store) == null ? void 0 : _b.projectCache;
+    if (!cache) {
+      resolve(null);
+      return;
+    }
+    const projects = Array.from(cache.keys()).map(
+      (path) => path.replace(/^Projects\//, "").replace(/\.md$/, "")
+    );
+    console.log("Projects found:", projects);
+    new ProjectPickerModal(
+      app,
+      projects,
+      async (projectName) => {
+        var _a2, _b2;
+        const projectFile = app.vault.getAbstractFileByPath(`Projects/${projectName}.md`);
+        if (!(projectFile instanceof import_obsidian9.TFile)) {
+          resolve(null);
+          return;
+        }
+        const projectCache = app.metadataCache.getFileCache(projectFile);
+        const poaLink = (_a2 = projectCache == null ? void 0 : projectCache.frontmatter) == null ? void 0 : _a2.description;
+        if (!poaLink) {
+          resolve(null);
+          return;
+        }
+        const poaFile = app.metadataCache.getFirstLinkpathDest(poaLink, projectFile.path);
+        if (!poaFile) {
+          resolve(null);
+          return;
+        }
+        const poaData = (_b2 = app.metadataCache.getFileCache(poaFile)) == null ? void 0 : _b2.frontmatter;
+        resolve({
+          projectName,
+          poaPath: poaFile.path,
+          idTag: poaData == null ? void 0 : poaData.idTag,
+          projectTitle: poaData == null ? void 0 : poaData.projectTitle
+        });
+      }
+    ).open();
+  });
+}
+
 // src/main.ts
-var ObsidianPartner = class extends import_obsidian8.Plugin {
+var ObsidianPartner = class extends import_obsidian10.Plugin {
   constructor() {
     super(...arguments);
     this.core = new CorePlugin();
@@ -996,6 +1081,15 @@ var ObsidianPartner = class extends import_obsidian8.Plugin {
       await this.loadData()
     );
     registerCommands(this);
+    this.api = { getProjectData: () => getProjectData(this.app) };
+    this.addCommand({
+      id: "get-project-data",
+      name: "Get Project Data",
+      callback: async () => {
+        const data = await getProjectData(this.app);
+        console.log(data);
+      }
+    });
     this.callRegistry = new CallRegistry();
     this.callRegistry.load(this.settings.calls);
     (_b = (_a = this.settings).calls) != null ? _b : _a.calls = [];

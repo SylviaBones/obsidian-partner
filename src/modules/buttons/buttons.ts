@@ -56,9 +56,7 @@ function createButtonPlugin(resolver: ButtonResolver ) {
 
       buildDecorations(view: EditorView): DecorationSet {
         const builder = new RangeSetBuilder<Decoration>();
-
         const isReadingMode = !view.contentDOM?.isContentEditable;
-
         const regex = /`partner-(btn)-([a-zA-Z0-9_-]+)`/g;
 
         for (let { from, to } of view.visibleRanges) {
@@ -67,12 +65,16 @@ function createButtonPlugin(resolver: ButtonResolver ) {
           let match;
           while ((match = regex.exec(text)) !== null) {
             const [full, type, label] = match;
-
             const start = from + match.index;
             const end = start + full.length;
+            // EditorView doesn't expose an `editor` property; pass the view
+            // through as a best-effort context (typed as any to satisfy TS).
+            const editor = view as any;
 
-            const buttonEl = 
-              resolver.resolve(type, label);
+            const buttonEl = resolver.resolve(type, label, {
+              from: start,
+              to: end
+            });
             if (!buttonEl) continue;
 
             // detect reading mode
