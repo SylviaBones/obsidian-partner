@@ -2,8 +2,14 @@
 import { CallRegistry } from "../calls/callRegistry";
 import { SnippetManager } from "../../core/managers/SnippetManager";
 import { App, Editor, EditorPosition } from "obsidian";
+import { TrackerInputModal } from "../modals/projectConnectionModal";
 
 declare const require: any;
+type TrackerInput = {
+  description: string;
+  idTag: string;
+  projectTitle: string;
+};
 
 // look up call, find and execute snippets
 export class ButtonResolver {
@@ -44,9 +50,7 @@ export class ButtonResolver {
         // shared runtime state later
       },
 
-      note:
-        file,
-        frontmatter,
+      note: { file, frontmatter },
 
       from: undefined as EditorPosition | undefined,
       to: undefined as EditorPosition | undefined,
@@ -55,7 +59,6 @@ export class ButtonResolver {
   }
 
   resolve(type: string, label: string, extraContext: any = {}): HTMLElement | null {
-    console.log("[Resolver] Resolving call:", type, label);
     const call = 
       this.callRegistry.get(
         `partner-${type}-${label}`
@@ -77,7 +80,6 @@ export class ButtonResolver {
       console.log("Available snippets:", this.snippetManager.getAllKeys());
       const fn = this.snippetManager.get(call.source);
 
-      console.log("Running snippet:", call.source);
 
       if (!fn) {
         console.warn("[Resolver] Missing snippet:", call.source);
@@ -90,23 +92,25 @@ export class ButtonResolver {
         editor,
         from: editor?.offsetToPos(extraContext.from),
         to: editor?.offsetToPos(extraContext.to),
-        call
+        call,
+        promptTracker: (
+          defaults: Partial<TrackerInput> = {},
+          onUpdate?: (description: string) => Promise<TrackerInput | null>
+        ): Promise<TrackerInput | null> => {
+          console.log("promptTracker called with defaults:", defaults);
+          console.log("[promptTracker] onUpdate:", onUpdate);
+          return new Promise<TrackerInput | null>((resolve) => {
+            const handleSubmit = (result: TrackerInput | null) => {
+              console.log("[promptTracker] onSubmit called with result:", result);
+              resolve(result);
+            };
+            const updateHandler = onUpdate ?? (async (_description: string) => null);
+            new TrackerInputModal(this.app, handleSubmit, defaults, updateHandler).open();
+          });
+        },
       };
       const action = fn(context);
 
-
-      console.log("[Resolver] Action returned:", action);
-
-      if (!action) {
-        console.warn("[Resolver] No action returned:", call.source);
-        return null;
-      }
-
-      console.log("[Resolver] INPUT:", call.source)
-      console.log("[Resolver] FN CHECK:", {
-        type: typeof fn,
-        fn: fn
-      });
 
       // Build button; centralized UI
       return this.buildButton(call, action, context);

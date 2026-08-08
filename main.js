@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => ObsidianPartner
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/core/EventBus.ts
 var EventBus = class {
@@ -346,6 +346,123 @@ var CallRegistry = class _CallRegistry {
   }
 };
 
+// src/modules/modals/projectConnectionModal.ts
+var import_obsidian2 = require("obsidian");
+var TrackerInputModal = class extends import_obsidian2.Modal {
+  constructor(app, onSubmit, defaults = {}, onUpdate) {
+    var _a, _b, _c;
+    super(app);
+    this.description = (_a = defaults.description) != null ? _a : "";
+    this.idTag = (_b = defaults.idTag) != null ? _b : "";
+    this.projectTitle = (_c = defaults.projectTitle) != null ? _c : "";
+    this.onSubmit = onSubmit;
+    this.onUpdate = onUpdate;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", {
+      text: "Project Connection"
+    });
+    new import_obsidian2.Setting(contentEl).setName("Description / POA").setDesc("Path to the POA file").addText((text) => {
+      this.descriptionInput = text;
+      text.setValue(this.description).setPlaceholder("Select a POA file...");
+    }).addButton(
+      (button) => button.setIcon("search").setTooltip("Choose POA file").onClick(() => this.choosePOA())
+    );
+    const statusEl = contentEl.createEl("span", { text: "" });
+    new import_obsidian2.Setting(contentEl).addButton((button) => {
+      button.setButtonText("Update").onClick(async () => {
+        statusEl.setText("Updating...");
+        statusEl.style.color = "var(--text-muted)";
+        try {
+          await this.updateConnection();
+          statusEl.setText("Wired up!");
+          statusEl.style.color = "var(--text-green)";
+          setTimeout(() => {
+            statusEl.setText("");
+          }, 2e3);
+        } catch (error) {
+          console.error("Error updating connection:", error);
+          statusEl.setText("Update failed!");
+          statusEl.style.color = "var(--text-red)";
+        }
+      });
+    });
+    new import_obsidian2.Setting(contentEl).setName("idTag").addText((text) => {
+      this.idTagInput = text;
+      text.setValue(this.idTag).setPlaceholder("Project tag");
+    });
+    new import_obsidian2.Setting(contentEl).setName("projectTitle").addText((text) => {
+      this.projectTitleInput = text;
+      text.setValue(this.projectTitle).setPlaceholder("Project title");
+    });
+    new import_obsidian2.Setting(contentEl).addButton(
+      (button) => button.setButtonText("Submit").setCta().onClick(() => {
+        this.submit();
+      })
+    ).addButton(
+      (button) => button.setButtonText("Done").onClick(() => {
+        this.close();
+      })
+    );
+  }
+  async choosePOA() {
+    const modal = new POAFileSuggestModal(
+      this.app,
+      (file) => {
+        this.description = file.path;
+        this.descriptionInput.setValue(file.path);
+      }
+    );
+    modal.open();
+  }
+  async updateConnection() {
+    var _a, _b, _c;
+    const description = this.descriptionInput.getValue().trim();
+    if (!description) {
+      return;
+    }
+    const result = await this.onUpdate(description);
+    if (!result) {
+      return;
+    }
+    this.description = (_a = result.description) != null ? _a : description;
+    this.idTag = (_b = result.idTag) != null ? _b : "";
+    this.projectTitle = (_c = result.projectTitle) != null ? _c : "";
+    this.descriptionInput.setValue(this.description);
+    this.idTagInput.setValue(this.idTag);
+    this.projectTitleInput.setValue(this.projectTitle);
+  }
+  submit() {
+    const result = {
+      description: this.descriptionInput.getValue().trim(),
+      idTag: this.idTagInput.getValue().trim(),
+      projectTitle: this.projectTitleInput.getValue().trim()
+    };
+    console.log("Submitting TrackerInput:", result);
+    console.log("onSubmit function:", this.onSubmit);
+    this.onSubmit(result);
+    this.close();
+  }
+};
+var POAFileSuggestModal = class extends import_obsidian2.FuzzySuggestModal {
+  constructor(app, onChoose) {
+    super(app);
+    this.files = app.vault.getMarkdownFiles();
+    this.onChoose = onChoose;
+  }
+  getItems() {
+    return this.files;
+  }
+  getItemText(file) {
+    return file.path;
+  }
+  onChooseItem(file) {
+    this.onChoose(file);
+  }
+};
+
 // src/modules/buttons/buttonResolver.ts
 var ButtonResolver = class {
   constructor(callRegistry, snippetManager, app, plugin) {
@@ -357,7 +474,7 @@ var ButtonResolver = class {
   //helpers
   buildContext() {
     var _a, _b;
-    const { Notice: Notice3, Modal: Modal2, TFile: TFile4 } = require("obsidian");
+    const { Notice: Notice3, Modal: Modal3, TFile: TFile5 } = require("obsidian");
     const file = this.app.workspace.getActiveFile();
     let frontmatter = {};
     if (file) {
@@ -369,8 +486,8 @@ var ButtonResolver = class {
       plugin: this.plugin,
       obsidian: {
         Notice: Notice3,
-        Modal: Modal2,
-        TFile: TFile4
+        Modal: Modal3,
+        TFile: TFile5
       },
       editor: (_b = this.app.workspace.activeEditor) == null ? void 0 : _b.editor,
       utils: {
@@ -379,14 +496,12 @@ var ButtonResolver = class {
       state: {
         // shared runtime state later
       },
-      note: file,
-      frontmatter,
+      note: { file, frontmatter },
       from: void 0,
       to: void 0
     };
   }
   resolve(type, label, extraContext = {}) {
-    console.log("[Resolver] Resolving call:", type, label);
     const call = this.callRegistry.get(
       `partner-${type}-${label}`
     );
@@ -406,7 +521,6 @@ var ButtonResolver = class {
     try {
       console.log("Available snippets:", this.snippetManager.getAllKeys());
       const fn = this.snippetManager.get(call.source);
-      console.log("Running snippet:", call.source);
       if (!fn) {
         console.warn("[Resolver] Missing snippet:", call.source);
         return null;
@@ -418,19 +532,21 @@ var ButtonResolver = class {
         editor,
         from: editor == null ? void 0 : editor.offsetToPos(extraContext.from),
         to: editor == null ? void 0 : editor.offsetToPos(extraContext.to),
-        call
+        call,
+        promptTracker: (defaults = {}, onUpdate) => {
+          console.log("promptTracker called with defaults:", defaults);
+          console.log("[promptTracker] onUpdate:", onUpdate);
+          return new Promise((resolve) => {
+            const handleSubmit = (result) => {
+              console.log("[promptTracker] onSubmit called with result:", result);
+              resolve(result);
+            };
+            const updateHandler = onUpdate != null ? onUpdate : async (_description) => null;
+            new TrackerInputModal(this.app, handleSubmit, defaults, updateHandler).open();
+          });
+        }
       };
       const action = fn(context);
-      console.log("[Resolver] Action returned:", action);
-      if (!action) {
-        console.warn("[Resolver] No action returned:", call.source);
-        return null;
-      }
-      console.log("[Resolver] INPUT:", call.source);
-      console.log("[Resolver] FN CHECK:", {
-        type: typeof fn,
-        fn
-      });
       return this.buildButton(call, action, context);
     } catch (err) {
       console.error("Snippet execution failed:", call.label, err);
@@ -457,11 +573,11 @@ var ButtonResolver = class {
 };
 
 // src/modules/commands/createPmModalButton.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/modules/commands/projectSuggestModal.ts
-var import_obsidian2 = require("obsidian");
-var ProjectSuggestModal = class extends import_obsidian2.SuggestModal {
+var import_obsidian3 = require("obsidian");
+var ProjectSuggestModal = class extends import_obsidian3.SuggestModal {
   constructor(app, projects, onSelect) {
     super(app);
     this.projects = projects;
@@ -483,11 +599,11 @@ var ProjectSuggestModal = class extends import_obsidian2.SuggestModal {
 };
 
 // src/modules/properties/pmLink.ts
-var import_obsidian3 = require("obsidian");
+var import_obsidian4 = require("obsidian");
 async function insertPMLink(app, projectPath) {
   const file = app.workspace.getActiveFile();
   if (!file) {
-    new import_obsidian3.Notice("No active note.");
+    new import_obsidian4.Notice("No active note.");
     return;
   }
   const fileName = projectPath.split("/").pop();
@@ -497,7 +613,7 @@ async function insertPMLink(app, projectPath) {
       frontmatter.pmLink = `${fileName}`;
     }
   );
-  new import_obsidian3.Notice("PM Link added.");
+  new import_obsidian4.Notice("PM Link added.");
 }
 
 // src/editor/insertText.ts
@@ -514,7 +630,7 @@ async function createPMModalButton(app) {
   var _a, _b, _c;
   const pmPlugin = (_b = (_a = app.plugins) == null ? void 0 : _a.plugins) == null ? void 0 : _b["project-manager"];
   if (!pmPlugin) {
-    new import_obsidian4.Notice("Project Manager plugin is not enabled.");
+    new import_obsidian5.Notice("Project Manager plugin is not enabled.");
     return;
   }
   const cache = pmPlugin.store.projectCache;
@@ -535,7 +651,7 @@ async function createPMModalButton(app) {
   );
   const editor = (_c = app.workspace.activeEditor) == null ? void 0 : _c.editor;
   if (!editor) {
-    new import_obsidian4.Notice("No active editor.");
+    new import_obsidian5.Notice("No active editor.");
     return;
   }
   insertAtCursor(
@@ -628,19 +744,19 @@ var CorePlugin = class {
 };
 
 // src/settings/settingsTab.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 async function renderIcon(app, containerEl, iconText) {
-  await import_obsidian5.MarkdownRenderer.render(
+  await import_obsidian6.MarkdownRenderer.render(
     app,
     iconText,
     // ":sjb_obsidian:"
     containerEl,
     "",
     // source path
-    new import_obsidian5.Component()
+    new import_obsidian6.Component()
   );
 }
-var CreateCallModal = class extends import_obsidian5.Modal {
+var CreateCallModal = class extends import_obsidian6.Modal {
   constructor(app, parent) {
     super(app);
     this.parent = parent;
@@ -652,17 +768,17 @@ var CreateCallModal = class extends import_obsidian5.Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", { text: "Create New Call" });
-    new import_obsidian5.Setting(contentEl).setName("Call Label").addText((text) => {
+    new import_obsidian6.Setting(contentEl).setName("Call Label").addText((text) => {
       text.setPlaceholder("Call Label").onChange((value) => {
         this.parent.newCallLabel = value;
       });
     });
-    new import_obsidian5.Setting(contentEl).setName("Type").addDropdown((drop) => {
+    new import_obsidian6.Setting(contentEl).setName("Type").addDropdown((drop) => {
       drop.addOption("btn", "Button").addOption("vw", "View").setValue(this.parent.newCallType).onChange((value) => {
         this.parent.newCallType = value;
       });
     });
-    new import_obsidian5.Setting(contentEl).setName("Source").addDropdown((drop) => {
+    new import_obsidian6.Setting(contentEl).setName("Source").addDropdown((drop) => {
       drop.addOption("", "Select source");
       this.parent.getAvailableSources().forEach((source) => {
         drop.addOption(source, source);
@@ -671,19 +787,19 @@ var CreateCallModal = class extends import_obsidian5.Modal {
         this.parent.newCallSource = value;
       });
     });
-    new import_obsidian5.Setting(contentEl).setName("Description").setDesc("Optional").addTextArea((text) => {
+    new import_obsidian6.Setting(contentEl).setName("Description").setDesc("Optional").addTextArea((text) => {
       text.setPlaceholder("What does this call do?").onChange((value) => {
         this.parent.newCallDescription = value;
       });
     });
-    new import_obsidian5.Setting(contentEl).setName("Icon").setDesc("Optional").addTextArea(
+    new import_obsidian6.Setting(contentEl).setName("Icon").setDesc("Optional").addTextArea(
       (text) => {
         text.setPlaceholder("Iconify shortcode").onChange((value) => {
           this.parent.newCallIcon = value;
         });
       }
     );
-    new import_obsidian5.Setting(contentEl).addButton((btn) => {
+    new import_obsidian6.Setting(contentEl).addButton((btn) => {
       btn.setButtonText("Add Call").setCta().onClick(async () => {
         if (!this.parent.newCallSource) {
           console.warn("Partner Call requires a source.");
@@ -724,7 +840,7 @@ var CreateCallModal = class extends import_obsidian5.Modal {
     contentEl.empty();
   }
 };
-var PartnerSettingTab = class extends import_obsidian5.PluginSettingTab {
+var PartnerSettingTab = class extends import_obsidian6.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.newCallLabel = "";
@@ -757,7 +873,7 @@ var PartnerSettingTab = class extends import_obsidian5.PluginSettingTab {
         text: "Obsidian Partner"
       }
     );
-    new import_obsidian5.Setting(containerEl).setName("Snippet Folder").setDesc(
+    new import_obsidian6.Setting(containerEl).setName("Snippet Folder").setDesc(
       "Folder containing Partner JS snippets"
     ).addText((text) => {
       text.setPlaceholder(
@@ -779,7 +895,7 @@ var PartnerSettingTab = class extends import_obsidian5.PluginSettingTab {
   }
   renderExistingCalls(containerEl) {
     var _a;
-    new import_obsidian5.Setting(containerEl).setName("Existing Calls").setDesc("Calls registered in the plugin");
+    new import_obsidian6.Setting(containerEl).setName("Existing Calls").setDesc("Calls registered in the plugin");
     const list = containerEl.createDiv({ cls: "call-manager-list" });
     const calls = (_a = this.plugin.settings.calls) != null ? _a : [];
     if (calls.length === 0) {
@@ -812,7 +928,7 @@ var PartnerSettingTab = class extends import_obsidian5.PluginSettingTab {
     });
   }
   renderNewCall(containerEl) {
-    new import_obsidian5.Setting(containerEl).setName("Add a New Call").addButton((btn) => {
+    new import_obsidian6.Setting(containerEl).setName("Add a New Call").addButton((btn) => {
       btn.setButtonText("Create New Call").setCta().onClick(() => {
         new CreateCallModal(this.app, this).open();
       });
@@ -820,7 +936,7 @@ var PartnerSettingTab = class extends import_obsidian5.PluginSettingTab {
   }
   renderUncalledSnippets(containerEl) {
     var _a;
-    new import_obsidian5.Setting(containerEl).setName("Uncalled Snippets").setDesc("Refresh to scan the snippet folder").addButton((btn) => {
+    new import_obsidian6.Setting(containerEl).setName("Uncalled Snippets").setDesc("Refresh to scan the snippet folder").addButton((btn) => {
       btn.setButtonText("Refresh").onClick(() => {
         this.uncalledSnippets = this.getAvailableSources();
         this.display();
@@ -896,8 +1012,8 @@ var DEFAULT_SETTINGS = {
 };
 
 // src/callEngine.ts
-var import_obsidian6 = require("obsidian");
 var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var CallEngine = class {
   constructor(plugin) {
     this.plugin = plugin;
@@ -931,7 +1047,7 @@ var CallEngine = class {
   // Resolve call → actual content
   async renderCallInto(container, call, ctx) {
     const file = this.plugin.app.vault.getAbstractFileByPath(call.source);
-    if (!(file instanceof import_obsidian6.TFile)) {
+    if (!(file instanceof import_obsidian7.TFile)) {
       container.setText(`Missing source: ${call.source}`);
       return;
     }
@@ -942,7 +1058,7 @@ var CallEngine = class {
       return;
     }
     if (call.type === "vw") {
-      await import_obsidian7.MarkdownRenderer.renderMarkdown(
+      await import_obsidian8.MarkdownRenderer.renderMarkdown(
         content,
         container,
         file.path,
@@ -980,7 +1096,7 @@ var CallEngine = class {
       if (!call)
         return;
       const file = this.plugin.app.vault.getAbstractFileByPath(call.source);
-      if (!(file instanceof import_obsidian6.TFile))
+      if (!(file instanceof import_obsidian7.TFile))
         return;
       const content = await this.plugin.app.vault.read(file);
       const modal = new class extends window.Modal {
@@ -998,11 +1114,11 @@ var CallEngine = class {
 };
 
 // src/modules/calls/getProjectData.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian10 = require("obsidian");
 
 // src/modules/calls/projectPickerModal.ts
-var import_obsidian8 = require("obsidian");
-var ProjectPickerModal = class extends import_obsidian8.FuzzySuggestModal {
+var import_obsidian9 = require("obsidian");
+var ProjectPickerModal = class extends import_obsidian9.FuzzySuggestModal {
   constructor(app, projects, onSelect) {
     super(app);
     this.projects = projects;
@@ -1037,26 +1153,40 @@ function getProjectData(app) {
       app,
       projects,
       async (projectName) => {
-        var _a2, _b2;
-        const projectFile = app.vault.getAbstractFileByPath(`Projects/${projectName}.md`);
-        if (!(projectFile instanceof import_obsidian9.TFile)) {
+        var _a2, _b2, _c;
+        const projectPath = `Projects/${projectName}.md`;
+        const projectFile = app.vault.getAbstractFileByPath(projectPath);
+        if (!(projectFile instanceof import_obsidian10.TFile)) {
           resolve(null);
           return;
         }
         const projectCache = app.metadataCache.getFileCache(projectFile);
-        const poaLink = (_a2 = projectCache == null ? void 0 : projectCache.frontmatter) == null ? void 0 : _a2.description;
-        if (!poaLink) {
-          resolve(null);
+        const description = (_b2 = (_a2 = projectCache == null ? void 0 : projectCache.frontmatter) == null ? void 0 : _a2.description) != null ? _b2 : "";
+        if (!description) {
+          resolve({
+            projectName,
+            projectPath,
+            description
+          });
           return;
         }
-        const poaFile = app.metadataCache.getFirstLinkpathDest(poaLink, projectFile.path);
+        const poaFile = app.metadataCache.getFirstLinkpathDest(
+          description,
+          projectFile.path
+        );
         if (!poaFile) {
-          resolve(null);
+          resolve({
+            projectName,
+            projectPath,
+            description
+          });
           return;
         }
-        const poaData = (_b2 = app.metadataCache.getFileCache(poaFile)) == null ? void 0 : _b2.frontmatter;
+        const poaData = (_c = app.metadataCache.getFileCache(poaFile)) == null ? void 0 : _c.frontmatter;
         resolve({
           projectName,
+          projectPath,
+          description,
           poaPath: poaFile.path,
           idTag: poaData == null ? void 0 : poaData.idTag,
           projectTitle: poaData == null ? void 0 : poaData.projectTitle
@@ -1065,9 +1195,56 @@ function getProjectData(app) {
     ).open();
   });
 }
+async function updateProjectDescription(app, projectPath, description) {
+  var _a;
+  const projectFile = app.vault.getAbstractFileByPath(projectPath);
+  if (!(projectFile instanceof import_obsidian10.TFile)) {
+    return null;
+  }
+  await app.fileManager.processFrontMatter(
+    projectFile,
+    (fm) => {
+      fm.description = description;
+    }
+  );
+  const poaFile = app.metadataCache.getFirstLinkpathDest(
+    description,
+    projectFile.path
+  );
+  if (!poaFile) {
+    return {
+      projectName: projectFile.basename,
+      projectPath,
+      description
+    };
+  }
+  const poaData = (_a = app.metadataCache.getFileCache(poaFile)) == null ? void 0 : _a.frontmatter;
+  return {
+    projectName: projectFile.basename,
+    projectPath,
+    description,
+    poaPath: poaFile.path,
+    idTag: poaData == null ? void 0 : poaData.idTag,
+    projectTitle: poaData == null ? void 0 : poaData.projectTitle
+  };
+}
+async function updatePoaProperties(app, poaPath, updates) {
+  const file = app.vault.getAbstractFileByPath(poaPath);
+  if (!(file instanceof import_obsidian10.TFile)) {
+    throw new Error("POA file not found");
+  }
+  await app.fileManager.processFrontMatter(file, (fm) => {
+    if (updates.idTag !== void 0) {
+      fm.idTag = updates.idTag;
+    }
+    if (updates.projectTitle !== void 0) {
+      fm.projectTitle = updates.projectTitle;
+    }
+  });
+}
 
 // src/main.ts
-var ObsidianPartner = class extends import_obsidian10.Plugin {
+var ObsidianPartner = class extends import_obsidian11.Plugin {
   constructor() {
     super(...arguments);
     this.core = new CorePlugin();
@@ -1081,7 +1258,11 @@ var ObsidianPartner = class extends import_obsidian10.Plugin {
       await this.loadData()
     );
     registerCommands(this);
-    this.api = { getProjectData: () => getProjectData(this.app) };
+    this.api = {
+      getProjectData: () => getProjectData(this.app),
+      updateProjectDescription: (projectPath, description) => updateProjectDescription(this.app, projectPath, description),
+      updatePoaProperties: (poaPath, updates) => updatePoaProperties(this.app, poaPath, updates)
+    };
     this.addCommand({
       id: "get-project-data",
       name: "Get Project Data",

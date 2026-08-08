@@ -1,3 +1,4 @@
+//main.ts
 import { Plugin } from "obsidian";
 import { CorePlugin } from "./core/CorePlugin";
 import { PartnerSettingTab } from "./settings/settingsTab";
@@ -5,10 +6,10 @@ import { DEFAULT_SETTINGS, PartnerSettings } from "./settings/settings";
 import { CallEngine } from "./callEngine"
 import { CallRegistry } from "./modules/calls/callRegistry";
 import { registerCommands } from "./modules/commands";
-import { getProjectData } from "./modules/calls/getProjectData";
+import { getProjectData, updatePoaProperties, updateProjectDescription } from "./modules/calls/getProjectData";
+
 
 // Main plugin class
-
 //Bridge to Obsidian only, core logic is in CorePlugin
 
 export default class ObsidianPartner extends Plugin {
@@ -16,7 +17,6 @@ export default class ObsidianPartner extends Plugin {
   callEngine!: CallEngine;
   callRegistry!: CallRegistry;
   api!: any;
-
   core = new CorePlugin();
 
   async onload() {
@@ -28,7 +28,11 @@ export default class ObsidianPartner extends Plugin {
     );
     registerCommands(this);
 
-    this.api = {getProjectData: () => getProjectData(this.app)};
+    this.api = {
+      getProjectData: () => getProjectData(this.app),
+      updateProjectDescription: (projectPath: string, description: string) => updateProjectDescription(this.app, projectPath, description),
+      updatePoaProperties: (poaPath: string, updates: any) => updatePoaProperties(this.app, poaPath, updates)
+    };
     this.addCommand({
             id: "get-project-data",
             name: "Get Project Data",
