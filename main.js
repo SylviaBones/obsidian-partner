@@ -191,8 +191,16 @@ var PartnerButtonWidget = class extends import_view.WidgetType {
     super();
     this.el = el;
     this.readingMode = readingMode;
+    console.log("[Partner Widget] CREATED", {
+      text: el.textContent,
+      readingMode
+    });
   }
   toDOM() {
+    console.log("[Partner Widget] toDOM", {
+      text: this.el.textContent,
+      readingMode: this.readingMode
+    });
     if (this.readingMode) {
       const span = document.createElement("span");
       span.textContent = this.el.textContent || "Button";
@@ -209,12 +217,11 @@ var PartnerButtonWidget = class extends import_view.WidgetType {
 function createButtonPlugin(resolver) {
   return import_view.ViewPlugin.fromClass(
     class {
+      //decorations: DecorationSet;
       constructor(view) {
-        this.decorations = this.buildDecorations(view);
       }
       update(update) {
         if (update.docChanged || update.viewportChanged) {
-          this.decorations = this.buildDecorations(update.view);
         }
       }
       buildDecorations(view) {
@@ -222,32 +229,34 @@ function createButtonPlugin(resolver) {
         const builder = new import_state.RangeSetBuilder();
         const isReadingMode = !((_a = view.contentDOM) == null ? void 0 : _a.isContentEditable);
         const regex = /`partner-(btn)-([a-zA-Z0-9_-]+)`/g;
-        for (let { from, to } of view.visibleRanges) {
-          const text = view.state.doc.sliceString(from, to);
-          let match;
-          while ((match = regex.exec(text)) !== null) {
-            const [full, type, label] = match;
-            const start = from + match.index;
-            const end = start + full.length;
-            const editor = view;
-            const buttonEl = resolver.resolve(type, label, {
-              from: start,
-              to: end
-            });
-            if (!buttonEl)
-              continue;
-            const deco = import_view.Decoration.replace({
-              widget: new PartnerButtonWidget(buttonEl, isReadingMode),
-              inclusive: false
-            });
-            builder.add(start, end, deco);
-          }
+        const from = 0;
+        const to = view.state.doc.length;
+        const text = view.state.doc.sliceString(from, to);
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          const [full, type, label] = match;
+          const start = from + match.index;
+          const end = start + full.length;
+          const buttonEl = resolver.resolve(type, label, {
+            from: start,
+            to: end
+          });
+          if (!buttonEl)
+            continue;
+          const deco = import_view.Decoration.replace({
+            widget: new PartnerButtonWidget(
+              buttonEl,
+              isReadingMode
+            ),
+            inclusive: false
+          });
+          builder.add(start, end, deco);
         }
         return builder.finish();
       }
     },
     {
-      decorations: (v) => v.decorations
+      //decorations: v => v.decorations
     }
   );
 }
@@ -1281,7 +1290,15 @@ var ObsidianPartner = class extends import_obsidian11.Plugin {
     this.callEngine = new CallEngine(this);
     this.callEngine.init();
     this.core.init(this);
-    await this.core.onload();
+    this.app.workspace.onLayoutReady(() => {
+      console.log("[Partner] Workspace ready \u2014 starting runtime");
+      this.core.onload().catch((err) => {
+        console.error(
+          "[Partner] Runtime initialization failed:",
+          err
+        );
+      });
+    });
   }
   async SaveSettings() {
     await this.saveData(this.settings);

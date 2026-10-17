@@ -54,7 +54,16 @@ export default class ObsidianPartner extends Plugin {
     this.callEngine.init();
 
     this.core.init(this);       // give core access to plugin
-    await this.core.onload();   // let core do everything
+    this.app.workspace.onLayoutReady(() => {
+      console.log("[Partner] Workspace ready — starting runtime");
+
+      this.core.onload().catch(err => {
+          console.error(
+              "[Partner] Runtime initialization failed:",
+              err
+          );
+      });
+  });  // let core do everything
   }
 
   async SaveSettings() {
