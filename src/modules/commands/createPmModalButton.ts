@@ -13,7 +13,7 @@ export async function createPMModalButton(app: App) {
 	}
 
     
-	const cache = pmPlugin.store.projectCache;
+	const cache = pmPlugin.index.projects;
 	const projects = Array.from(cache.keys()).filter((key): key is string => typeof key === "string");
 
 	const selected = await new Promise<string | null>((resolve) => {

@@ -642,7 +642,7 @@ async function createPMModalButton(app) {
     new import_obsidian5.Notice("Project Manager plugin is not enabled.");
     return;
   }
-  const cache = pmPlugin.store.projectCache;
+  const cache = pmPlugin.index.projects;
   const projects = Array.from(cache.keys()).filter((key) => typeof key === "string");
   const selected = await new Promise((resolve) => {
     const modal = new ProjectSuggestModal(

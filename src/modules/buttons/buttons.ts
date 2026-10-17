@@ -1,4 +1,4 @@
-// === buttons.ts (FULL COMPOSITION) ===
+// === buttons.ts ===
 import { Plugin } from "obsidian";
 import {
   ViewPlugin,
