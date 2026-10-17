@@ -18,9 +18,17 @@ class PartnerButtonWidget extends WidgetType {
     private readingMode: boolean
   ) {
     super();
+    console.log("[Partner Widget] CREATED", {
+      text: el.textContent,
+      readingMode
+    });
   }
 
   toDOM() {
+    console.log("[Partner Widget] toDOM", {
+      text: this.el.textContent,
+      readingMode: this.readingMode
+    });
     if (this.readingMode) {
       // Reading mode → render as plain text-like element
       const span = document.createElement("span");
@@ -39,18 +47,32 @@ class PartnerButtonWidget extends WidgetType {
   }
 }
 
-function createButtonPlugin(resolver: ButtonResolver ) {
+function createButtonPlugin(resolver: ButtonResolver) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
 
       constructor(view: EditorView) {
+      //  console.log("[Partner Buttons] PLUGIN CREATED");
         this.decorations = this.buildDecorations(view);
       }
 
       update(update: ViewUpdate) {
+      //  console.log("[Partner Buttons] UPDATE", {
+      //    docChanged: update.docChanged,
+      //    viewportChanged: update.viewportChanged,
+      //    selectionSet: update.selectionSet,
+      //    focusChanged: update.focusChanged
+      //  });
+
         if (update.docChanged || update.viewportChanged) {
+          console.log("[Partner Buttons] REBUILDING DECORATIONS");
+
           this.decorations = this.buildDecorations(update.view);
+
+          //console.log(
+          //  "[Partner Buttons] Decoration rebuild complete"
+          //);
         }
       }
 
@@ -59,34 +81,48 @@ function createButtonPlugin(resolver: ButtonResolver ) {
         const isReadingMode = !view.contentDOM?.isContentEditable;
         const regex = /`partner-(btn)-([a-zA-Z0-9_-]+)`/g;
 
-        for (let { from, to } of view.visibleRanges) {
-          const text = view.state.doc.sliceString(from, to);
+        const from = 0;
+        const to = view.state.doc.length;
+        const text = view.state.doc.sliceString(from, to);
+        //console.log("[Partner Buttons] BUILD START", {
+        //  readingMode: isReadingMode,
+        //  docLength: view.state.doc.length,
+        //  textPreview: text.slice(0, 300)
+        //});
 
-          let match;
-          while ((match = regex.exec(text)) !== null) {
-            const [full, type, label] = match;
-            const start = from + match.index;
-            const end = start + full.length;
-            // EditorView doesn't expose an `editor` property; pass the view
-            // through as a best-effort context (typed as any to satisfy TS).
-            const editor = view as any;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          const [full, type, label] = match;
+          const start = from + match.index;
+          const end = start + full.length;
 
-            const buttonEl = resolver.resolve(type, label, {
-              from: start,
-              to: end
-            });
-            if (!buttonEl) continue;
+        //  console.log(
+        //    "[Partner Buttons] MATCH FOUND:",
+        //    {full, type, label, start, end}
+        //  );
 
-            // detect reading mode
-            const deco = Decoration.replace({
-              widget: new PartnerButtonWidget(buttonEl, isReadingMode),
-              inclusive: false
-            });
+          const buttonEl = resolver.resolve(type, label, {
+            from: start,
+            to: end
+          });
 
-            builder.add(start, end, deco);
-          }
+          //  console.log(
+          //    "[Partner Buttons] RESOLVING RESULT:",
+          //  //  {label, found: !!buttonEl, element: buttonEl}
+          //  );
+
+          if (!buttonEl) continue;
+
+          const deco = Decoration.replace({
+            widget: new PartnerButtonWidget(
+              buttonEl,
+              isReadingMode
+            ),
+            inclusive: false
+          });
+          builder.add(start, end, deco);
         }
-
+        //console.log("[Partner Buttons] BUILD COMPLETE");
         return builder.finish();
       }
     },
