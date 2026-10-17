@@ -14,7 +14,7 @@ export interface ProjectData {
 export function getProjectData(app: App): Promise<ProjectData | null> {
     return new Promise((resolve) => {
         const pm = (app as any)?.plugins?.plugins["project-manager"];
-        const cache = pm?.store?.projectCache as Map<string, any> | undefined;
+        const cache = pm?.index?.projects as Map<string, any> | undefined;
 
         if (!cache) {resolve(null); return;}
 

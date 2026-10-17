@@ -1149,7 +1149,7 @@ function getProjectData(app) {
   return new Promise((resolve) => {
     var _a, _b;
     const pm = (_a = app == null ? void 0 : app.plugins) == null ? void 0 : _a.plugins["project-manager"];
-    const cache = (_b = pm == null ? void 0 : pm.store) == null ? void 0 : _b.projectCache;
+    const cache = (_b = pm == null ? void 0 : pm.index) == null ? void 0 : _b.projects;
     if (!cache) {
       resolve(null);
       return;
