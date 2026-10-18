@@ -133,7 +133,24 @@ export class ButtonResolver {
 
     // click handler
     if (action.onClick) {
-      button.onclick = () => { action.onClick(context); };
+      button.onclick = () => {
+        console.log("[Partner Button] Click handler fired:", call.label);
+        console.log("[Partner Button] Action:", action);
+        console.log("[Partner Button] onClick:", action.onClick);
+
+        try {
+          const result = action.onClick(context);
+          console.log("[Partner Button] Action returned:", result);
+
+          if (result && typeof result.catch === "function") {
+            result.catch((err: unknown) => {
+              console.error("[Partner Button] Click action failed:", err);
+            });
+          }
+        } catch (err) {
+          console.error("[Partner Button] Click action threw:", err);
+        }
+      };
     }
 
     // optional extras (future-proofing)

@@ -50,11 +50,11 @@ class PartnerButtonWidget extends WidgetType {
 function createButtonPlugin(resolver: ButtonResolver) {
   return ViewPlugin.fromClass(
     class {
-      //decorations: DecorationSet;
+      decorations: DecorationSet;
 
       constructor(view: EditorView) {
       //  console.log("[Partner Buttons] PLUGIN CREATED");
-      //  this.decorations = this.buildDecorations(view);
+        this.decorations = this.buildDecorations(view);
       }
 
       update(update: ViewUpdate) {
@@ -68,7 +68,7 @@ function createButtonPlugin(resolver: ButtonResolver) {
         if (update.docChanged || update.viewportChanged) {
         //  console.log("[Partner Buttons] REBUILDING DECORATIONS");
 
-        //  this.decorations = this.buildDecorations(update.view);
+          this.decorations = this.buildDecorations(update.view);
 
           //console.log(
           //  "[Partner Buttons] Decoration rebuild complete"
@@ -127,7 +127,7 @@ function createButtonPlugin(resolver: ButtonResolver) {
       }
     },
     {
-      //decorations: v => v.decorations
+      decorations: v => v.decorations
     }
   );
 }

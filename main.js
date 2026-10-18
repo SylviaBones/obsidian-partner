@@ -217,11 +217,12 @@ var PartnerButtonWidget = class extends import_view.WidgetType {
 function createButtonPlugin(resolver) {
   return import_view.ViewPlugin.fromClass(
     class {
-      //decorations: DecorationSet;
       constructor(view) {
+        this.decorations = this.buildDecorations(view);
       }
       update(update) {
         if (update.docChanged || update.viewportChanged) {
+          this.decorations = this.buildDecorations(update.view);
         }
       }
       buildDecorations(view) {
@@ -256,7 +257,7 @@ function createButtonPlugin(resolver) {
       }
     },
     {
-      //decorations: v => v.decorations
+      decorations: (v) => v.decorations
     }
   );
 }
@@ -568,7 +569,20 @@ var ButtonResolver = class {
     button.textContent = (_b = (_a = action.label) != null ? _a : call.label) != null ? _b : call.source;
     if (action.onClick) {
       button.onclick = () => {
-        action.onClick(context);
+        console.log("[Partner Button] Click handler fired:", call.label);
+        console.log("[Partner Button] Action:", action);
+        console.log("[Partner Button] onClick:", action.onClick);
+        try {
+          const result = action.onClick(context);
+          console.log("[Partner Button] Action returned:", result);
+          if (result && typeof result.catch === "function") {
+            result.catch((err) => {
+              console.error("[Partner Button] Click action failed:", err);
+            });
+          }
+        } catch (err) {
+          console.error("[Partner Button] Click action threw:", err);
+        }
       };
     }
     if (action.className) {
